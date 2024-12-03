@@ -402,6 +402,7 @@ export function createGetSourceFile(
     readFile: ProgramHost<any>["readFile"],
     setParentNodes: boolean | undefined,
 ): CompilerHost["getSourceFile"] {
+    const cache = new Map<string, {text: string, result: SourceFile}>();
     return (fileName, languageVersionOrOptions, onError) => {
         let text: string | undefined;
         try {
@@ -416,7 +417,19 @@ export function createGetSourceFile(
             }
             text = "";
         }
-        return text !== undefined ? createSourceFile(fileName, text, languageVersionOrOptions, setParentNodes) : undefined;
+
+        if (text === undefined) {
+            return undefined;
+        }
+
+        const previous = cache.get(fileName);
+        if (previous !== undefined && previous.text === text) {
+            return previous.result;
+        }
+
+        const result = createSourceFile(fileName, text, languageVersionOrOptions, setParentNodes);
+        cache.set(fileName, {result, text});
+        return result;
     };
 }
 
